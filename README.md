@@ -16,9 +16,15 @@ This repository was extended from its original smart contract repo: https://gith
 # Loterias-ethrereum
 ### Nuevas características implementadas
 
-#### Historial de ganadores:
-- Se agregó un array `winnersHistory` para almacenar los ganadores anteriores.
-- La función `getWinnersHistory` permite consultar el historial de ganadores.
+#### Historial de ganadores anónimo:
+- En lugar de almacenar las direcciones de los ganadores en `winnersHistory`, se almacena solo el monto ganado (`lastWinnerAmount`).
+- La función `getWinnersHistory` devuelve un array de montos ganados, sin revelar las direcciones.
+
+#### Eventos anónimos:
+- El evento `WinnerDrawn` ahora solo emite el monto ganado (`lastWinnerAmount`), sin revelar la dirección del ganador.
+
+#### Eliminación de la variable `lastWinner`:
+- Se eliminó la variable `lastWinner` para evitar revelar la dirección del último ganador.
 
 #### Eventos para mejorar la transparencia:
 - Se agregaron eventos como `TicketsPurchased`, `WinnerDrawn`, `LotteryRestarted` y `CommissionWithdrawn` para registrar acciones importantes.

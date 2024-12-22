@@ -13,16 +13,15 @@ contract Lottery is ReentrancyGuard {
     uint256 public expiration; // tiempo de expiración en caso de que la lotería no se lleve a cabo
     address public lotteryOperator; // creador de la lotería
     uint256 public operatorTotalCommission = 0; // saldo total de comisiones
-    address public lastWinner; // último ganador de la lotería
     uint256 public lastWinnerAmount; // monto del último ganador de la lotería
 
     mapping(address => uint256) public winnings; // mapea a los ganadores con sus ganancias
     address[] public tickets; // array de boletos comprados
-    address[] public winnersHistory; // historial de ganadores
+    uint256[] public winnersHistory; // historial de montos ganados (anónimo)
 
     // Eventos para mejorar la transparencia
     event TicketsPurchased(address indexed buyer, uint256 numberOfTickets);
-    event WinnerDrawn(address indexed winner, uint256 amount);
+    event WinnerDrawn(uint256 amount); // Solo el monto ganado
     event LotteryRestarted();
     event CommissionWithdrawn(address indexed operator, uint256 amount);
 
@@ -51,8 +50,8 @@ contract Lottery is ReentrancyGuard {
         return tickets;
     }
 
-    // devuelve el historial de ganadores
-    function getWinnersHistory() public view returns (address[] memory) {
+    // devuelve el historial de montos ganados (anónimo)
+    function getWinnersHistory() public view returns (uint256[] memory) {
         return winnersHistory;
     }
 
@@ -95,18 +94,17 @@ contract Lottery is ReentrancyGuard {
         uint256 winningTicket = randomNumber % tickets.length;
 
         address winner = tickets[winningTicket];
-        lastWinner = winner;
         winnings[winner] += (tickets.length * (ticketPrice - ticketCommission));
         lastWinnerAmount = winnings[winner];
         operatorTotalCommission += (tickets.length * ticketCommission);
         delete tickets;
         expiration = block.timestamp + duration;
 
-        // Guardar al ganador en el historial
-        winnersHistory.push(winner);
+        // Guardar el monto ganado en el historial (anónimo)
+        winnersHistory.push(lastWinnerAmount);
 
-        // Emitir evento de ganador sorteado
-        emit WinnerDrawn(winner, winnings[winner]);
+        // Emitir evento de ganador sorteado (solo monto)
+        emit WinnerDrawn(lastWinnerAmount);
     }
 
     function restartDraw() public isOperator {
