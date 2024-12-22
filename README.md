@@ -14,3 +14,20 @@ DISCLAIMER: This video is made for informational and educational purposes only. 
 
 This repository was extended from its original smart contract repo: https://github.com/drord9/Lottery
 # Loterias-ethrereum
+### Nuevas características implementadas
+
+#### Historial de ganadores:
+- Se agregó un array `winnersHistory` para almacenar los ganadores anteriores.
+- La función `getWinnersHistory` permite consultar el historial de ganadores.
+
+#### Eventos para mejorar la transparencia:
+- Se agregaron eventos como `TicketsPurchased`, `WinnerDrawn`, `LotteryRestarted` y `CommissionWithdrawn` para registrar acciones importantes.
+
+#### Comisiones dinámicas:
+- Se agregó la función `setTicketCommission` para permitir que el operador configure la comisión de manera dinámica.
+
+#### Evitar que el operador sea ganador:
+- Se agregó una validación en `BuyTickets` para evitar que el operador compre boletos.
+
+#### Evitar retiro de comisiones antes de tiempo:
+- Se agregó una validación en `WithdrawCommission` para asegurarse de que las comisiones solo se puedan retirar después de que la lotería haya expirado.

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 pragma solidity >=0.7.0 <0.9.0;
 
-contract Lottery {
+contract Lottery is ReentrancyGuard {
     uint256 public constant ticketPrice = 0.01 ether;
     uint256 public constant maxTickets = 100; // máximo de boletos por lotería
-    uint256 public constant ticketCommission = 0.001 ether; // comisión por boleto
+    uint256 public ticketCommission = 0.001 ether; // comisión por boleto (dinámica)
     uint256 public constant duration = 30 minutes; // duración establecida para la lotería
 
     uint256 public expiration; // tiempo de expiración en caso de que la lotería no se lleve a cabo
@@ -17,6 +18,13 @@ contract Lottery {
 
     mapping(address => uint256) public winnings; // mapea a los ganadores con sus ganancias
     address[] public tickets; // array de boletos comprados
+    address[] public winnersHistory; // historial de ganadores
+
+    // Eventos para mejorar la transparencia
+    event TicketsPurchased(address indexed buyer, uint256 numberOfTickets);
+    event WinnerDrawn(address indexed winner, uint256 amount);
+    event LotteryRestarted();
+    event CommissionWithdrawn(address indexed operator, uint256 amount);
 
     // modificador para verificar si el llamador es el operador de la lotería
     modifier isOperator() {
@@ -43,11 +51,17 @@ contract Lottery {
         return tickets;
     }
 
+    // devuelve el historial de ganadores
+    function getWinnersHistory() public view returns (address[] memory) {
+        return winnersHistory;
+    }
+
     function getWinningsForAddress(address addr) public view returns (uint256) {
         return winnings[addr];
     }
 
     function BuyTickets() public payable {
+        require(msg.sender != lotteryOperator, "El operador no puede comprar boletos");
         require(
             msg.value % ticketPrice == 0,
             string.concat(
@@ -66,6 +80,9 @@ contract Lottery {
         for (uint256 i = 0; i < numOfTicketsToBuy; i++) {
             tickets.push(msg.sender);
         }
+
+        // Emitir evento de compra de boletos
+        emit TicketsPurchased(msg.sender, numOfTicketsToBuy);
     }
 
     function DrawWinnerTicket() public isOperator {
@@ -84,6 +101,12 @@ contract Lottery {
         operatorTotalCommission += (tickets.length * ticketCommission);
         delete tickets;
         expiration = block.timestamp + duration;
+
+        // Guardar al ganador en el historial
+        winnersHistory.push(winner);
+
+        // Emitir evento de ganador sorteado
+        emit WinnerDrawn(winner, winnings[winner]);
     }
 
     function restartDraw() public isOperator {
@@ -91,6 +114,9 @@ contract Lottery {
 
         delete tickets;
         expiration = block.timestamp + duration;
+
+        // Emitir evento de reinicio de la lotería
+        emit LotteryRestarted();
     }
 
     function checkWinningsAmount() public view returns (uint256) {
@@ -101,7 +127,7 @@ contract Lottery {
         return reward2Transfer;
     }
 
-    function WithdrawWinnings() public isWinner {
+    function WithdrawWinnings() public nonReentrant isWinner {
         address payable winner = payable(msg.sender);
 
         uint256 reward2Transfer = winnings[winner];
@@ -121,13 +147,18 @@ contract Lottery {
         delete tickets;
     }
 
-    function WithdrawCommission() public isOperator {
+    function WithdrawCommission() public nonReentrant isOperator {
+        require(block.timestamp >= expiration, "No se pueden retirar comisiones antes de que la lotería expire");
+
         address payable operator = payable(msg.sender);
 
         uint256 commission2Transfer = operatorTotalCommission;
         operatorTotalCommission = 0;
 
         operator.transfer(commission2Transfer);
+
+        // Emitir evento de retiro de comisiones
+        emit CommissionWithdrawn(operator, commission2Transfer);
     }
 
     function IsWinner() public view returns (bool) {
@@ -140,5 +171,11 @@ contract Lottery {
 
     function RemainingTickets() public view returns (uint256) {
         return maxTickets - tickets.length;
+    }
+
+    // Configurar comisión dinámica
+    function setTicketCommission(uint256 _commission) public isOperator {
+        require(_commission < ticketPrice, "La comisión no puede ser mayor que el precio del boleto");
+        ticketCommission = _commission;
     }
 }
